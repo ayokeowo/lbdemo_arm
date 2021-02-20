@@ -91,7 +91,8 @@
             "name":"[concat(parameters('subnet_names')[copyIndex()])]"
             },
         "dependsOn": [
-            "[resourceId('Microsoft.Network/virtualNetworks', 'demovnet')]"
+            "[resourceId('Microsoft.Network/virtualNetworks', 'demovnet')]",
+            "[resourceId('Microsoft.Network/networkSecurityGroups','vnet-nsg')]"
         ],
         "properties": {
             "ipConfigurations": [
@@ -104,10 +105,120 @@
                         }
                     }
                 }
-            ]
+            ],
+            "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups','vnet-nsg')]"
+            }
         },
         "copy": {
             "name":"subnet_copy",
+            "count":"[length(parameters('subnet_addrspace'))]"
+        }
+    },
+    {
+        "name": "vnet-nsg",
+        "type": "Microsoft.Network/networkSecurityGroups",
+        "apiVersion": "2019-11-01",
+        "location": "[resourceGroup().location]",
+        "properties": {
+            "securityRules": [
+                {
+                    "name": "allowSSH",
+                    "properties": {
+                        "description": "allow SSH",
+                        "protocol": "Tcp",
+                        "sourcePortRange": "*",
+                        "destinationPortRange": "22",
+                        "sourceAddressPrefix": "*",
+                        "destinationAddressPrefix": "*",
+                        "access": "Allow",
+                        "priority": 100,
+                        "direction": "Inbound"
+                    }
+                },
+                {
+                    "name": "allowHTTP",
+                    "properties": {
+                        "description": "allow HTTP",
+                        "protocol": "Tcp",
+                        "sourcePortRange": "*",
+                        "destinationPortRange": "80",
+                        "sourceAddressPrefix": "*",
+                        "destinationAddressPrefix": "*",
+                        "access": "Allow",
+                        "priority": 200,
+                        "direction": "Inbound"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "name": "[concat(parameters('subnet_names')[copyIndex()],'vmstorage')]",
+        "type": "Microsoft.Storage/storageAccounts",
+        "apiVersion": "2019-06-01",
+        "location": "[resourceGroup().location]",
+        "tags": {
+            "displayName": "ubuntuVM Storage Account"
+        },
+        "sku": {
+            "name": "Standard_LRS"
+        },
+        "kind": "Storage",
+        "copy": {
+            "name":"storage_copy",
+            "count":"[length(parameters('subnet_addrspace'))]"
+        }
+    },
+    {
+        "name":  "[concat(parameters('subnet_names')[copyIndex()],'VM')]",
+        "type": "Microsoft.Compute/virtualMachines",
+        "apiVersion": "2019-07-01",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/networkInterfaces',concat('nic',parameters('subnet_names')[copyIndex()]))]"
+        ],
+        "tags": {
+            "displayName": "ubuntuVM"
+        },
+        "properties": {
+            "hardwareProfile": {
+                "vmSize": "Standard_A2_v2"
+            },
+            "osProfile": {
+                "computerName": "[concat(parameters('subnet_names')[copyIndex()],'VMOSProfile')]",
+                "adminUsername": "adminUsername",
+                "adminPassword": "adminPassword"
+            },
+            "storageProfile": {
+                "imageReference": {
+                    "publisher": "Canonical",
+                    "offer": "UbuntuServer",
+                    "sku": "16.04-LTS",
+                    "version": "latest"
+                },
+                "osDisk": {
+                    "name": "[concat(parameters('subnet_names')[copyIndex()],'osDisk')]",
+                    "caching": "ReadWrite",
+                    "createOption": "FromImage"
+                }
+            },
+            "networkProfile": {
+                "networkInterfaces": [
+                    {
+                        "id": "[resourceId('Microsoft.Network/networkInterfaces',concat('nic',parameters('subnet_names')[copyIndex()]))]"
+                    }
+                ]
+            },
+            "diagnosticsProfile": {
+                "bootDiagnostics": {
+                    "enabled": true,
+                    "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts/', toLower(concat(parameters('subnet_names')[copyIndex()],'vmstorage')))).primaryEndpoints.blob]"
+                }
+            }
+        },
+          "copy": {
+            "name":"vm_copy",
             "count":"[length(parameters('subnet_addrspace'))]"
         }
     }

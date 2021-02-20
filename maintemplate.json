@@ -1,0 +1,125 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+           "type": "string",
+           "metadata": {
+                "description": "Select Location",
+                "allowedValues": [
+                    "eastus",
+                    "uksouth",
+                    "uknorth"
+                ],
+            "defaultValue":"uksouth"
+            }
+        },
+
+        "vnet_addrspace": {
+           "type": "string",
+           "metadata": {
+                "description": "VNET Address Space",
+                "defaultValue":"10.0.0.0/16"
+            }
+        },
+        "subnetcount": {
+           "type": "int",
+           "metadata": {
+                "description": "Total number of user subnets",
+                "defaultValue":3
+            }
+        },
+        "subnet_addrspace": {
+           "type": "array",
+           "metadata": {
+                "description": "List of subnet prefixes"
+            },
+        "defaultValue": ["10.0.1.0/24","10.0.2.0/24","10.0.3.0/24"]
+        },
+        "subnet_names": {
+           "type": "array",
+           "metadata": {
+                "description": "List of subnet names"
+            },
+            "defaultValue": ["subnet1","subnet2","subnet3"]
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "name": "demo",
+            "type": "Microsoft.Resources/resourceGroups",
+            "apiVersion": "2020-06-01",
+            "location": "[parameters('location')]",
+            "tags": {
+            }
+   },
+    {
+        "name": "demovnet",
+        "type": "Microsoft.Network/virtualNetworks",
+        "apiVersion": "2019-11-01",
+        "location": "[resourceGroup().location]",
+        "tags": {
+            "displayName": "demovnet"
+        },
+        "properties": {
+            "addressSpace": {
+                "addressPrefixes": [
+                    "[parameters('vnet_addrspace')]"
+                ]
+            },
+            "subnets": [
+                {
+                    "name": "[parameters('subnet_names')[0]]",
+                    "properties": {
+                        "addressPrefix": "[parameters('subnet_addrspace')[0]]"
+                    }
+                },
+                {
+                    "name": "[parameters('subnet_names')[1]]",
+                    "properties": {
+                        "addressPrefix": "[parameters('subnet_addrspace')[1]]"
+                    }
+                },
+                {
+                    "name": "[parameters('subnet_names')[2]]",
+                    "properties": {
+                        "addressPrefix": "[parameters('subnet_addrspace')[2]]"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "name": "[concat('nic',parameters('subnet_names')[copyIndex()])]",
+        "type": "Microsoft.Network/networkInterfaces",
+        "apiVersion": "2019-11-01",
+        "location": "[resourceGroup().location]",
+        "tags": {
+            "name":"[concat(parameters('subnet_names')[copyIndex()])]"
+            },
+        "dependsOn": [
+            "[resourceId('Microsoft.Network/virtualNetworks', 'virtualNetwork1')]"
+        ],
+        "properties": {
+            "ipConfigurations": [
+                {
+                    "name": "[concat('ipconfig',copyIndex())]",
+                    "properties": {
+                        "privateIPAllocationMethod": "Dynamic",
+                        "subnet": {
+                            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'virtualNetwork1', parameters('subnet_names')[copyIndex()])]"
+                        }
+                    }
+                }
+            ]
+        },
+        "copy": {
+            "name":"subnet_copy",
+            "count":"[length(parameters('subnet_addrspace'))]"
+        }
+    }
+
+    ],
+    "outputs": {}
+}

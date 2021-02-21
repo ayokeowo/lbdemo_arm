@@ -1,5 +1,5 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
         "location": {
@@ -221,8 +221,32 @@
             "name":"vm_copy",
             "count":"[length(parameters('subnet_addrspace'))]"
         }
-    }
-
+    },
+    {
+        "name": "config-app",
+        "type": "extensions",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2019-03-01",
+        "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',concat(parameters('subnet_names')[copyIndex()],'VM'))]"
+        ],
+        "tags": {
+            "displayName": "config-app"
+        },
+        "properties": {
+            "publisher": "Microsoft.Azure.Extensions",
+            "type": "CustomScript",
+            "typeHandlerVersion": "2.1",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+            },
+            "protectedSettings": {
+            "commandToExecute": "sh userdata.sh",
+            "fileUris": ["https://github.com/MyProject/Archive/hello.sh"
+            ]  
+            }
+        }
+        }
     ],
     "outputs": {}
 }

@@ -8,8 +8,7 @@
                 "description": "Select Location",
                 "allowedValues": [
                     "eastus",
-                    "uksouth",
-                    "uknorth"
+                    "uksouth"
                 ]
             },
             "defaultValue":"uksouth"
@@ -44,7 +43,9 @@
             "defaultValue": ["subnet1","subnet2","subnet3"]
         }
     },
-    "variables": {},
+    "variables": {
+        "prefix": "Microsoft.Compute/virtualMachines/"
+    },
     "resources": [
     {
         "name": "demovnet",
@@ -181,14 +182,15 @@
         "tags": {
             "displayName": "ubuntuVM"
         },
-        "properties": {
+        "properties": 
+        {
             "hardwareProfile": {
                 "vmSize": "Standard_A2_v2"
             },
             "osProfile": {
                 "computerName": "[concat(parameters('subnet_names')[copyIndex()],'VMOSProfile')]",
-                "adminUsername": "adminUsername",
-                "adminPassword": "adminPassword"
+                "adminUsername": "adminadmin",
+                "adminPassword": "Passw0rd!"
             },
             "storageProfile": {
                 "imageReference": {
@@ -217,36 +219,41 @@
                 }
             }
         },
-          "copy": {
+
+            "copy": {
             "name":"vm_copy",
             "count":"[length(parameters('subnet_addrspace'))]"
-        }
+                },
+        "resources": [
+            {
+    "name": "[concat(parameters('subnet_names')[copyIndex()],'VMextension')]",
+    "type": "extensions",
+    "apiVersion": "2018-06-01",
+    "location": "[resourceGroup().location]",
+    "tags": {
+        "displayName": "customScript1 for Linux VM"
     },
-    {
-        "name": "config-app",
-        "type": "extensions",
-        "location": "[resourceGroup().location]",
-        "apiVersion": "2019-03-01",
-        "dependsOn": [
-            "[concat('Microsoft.Compute/virtualMachines/',concat(parameters('subnet_names')[copyIndex()],'VM'))]"
-        ],
-        "tags": {
-            "displayName": "config-app"
-        },
-        "properties": {
-            "publisher": "Microsoft.Azure.Extensions",
-            "type": "CustomScript",
-            "typeHandlerVersion": "2.1",
-            "autoUpgradeMinorVersion": true,
-            "settings": {
-            },
-            "protectedSettings": {
-            "commandToExecute": "sh userdata.sh",
-            "fileUris": ["https://github.com/MyProject/Archive/hello.sh"
-            ]  
-            }
-        }
-        }
+    "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/',concat(parameters('subnet_names')[copyIndex()],'VM'))]"
     ],
-    "outputs": {}
-}
+    "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.4",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+            "fileUris": [
+                "https://raw.githubusercontent.com/ayokeowo/lbdemo_arm/master/userdata.sh"
+            ],
+            "commandToExecute": "sh userdata.sh"
+        }
+    }
+
+    }
+        ]}
+
+     ],
+
+    "outputs": {
+    }
+            }

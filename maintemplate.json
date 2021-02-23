@@ -21,13 +21,7 @@
             },
             "defaultValue":"10.0.0.0/16"
         },
-        "subnetcount": {
-           "type": "int",
-           "metadata": {
-                "description": "Total number of user subnets"
-            },
-            "defaultValue":3
-        },
+        
         "subnet_addrspace": {
            "type": "array",
            "metadata": {
